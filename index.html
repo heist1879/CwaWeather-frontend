@@ -13,9 +13,9 @@
     <style>
         :root {
             --st-red: #E50914;
-            --st-dark: #0a0a0a;
-            --st-gray: #1a1a1a;
-            --st-border: rgba(229, 9, 20, 0.5);
+            --st-dark: #000000;
+            --st-gray: #111;
+            --st-border: rgba(229, 9, 20, 0.65);
             --st-light-red: #ff3b3b;
             --st-text: #f2f2f2;
         }
@@ -29,13 +29,36 @@
 
         body {
             font-family: 'Cinzel', serif;
-            background: radial-gradient(circle at 50% 10%, rgba(229, 9, 20, 0.15), transparent 70%), #000;
+            background: #000;
             color: var(--st-text);
             min-height: 100vh;
-            color: var(--ac-dark);
-            /* 防止 iOS 左右滑動 */
             overflow-x: hidden;
             padding-bottom: 20px;
+            position: relative;
+        }
+
+        /* ==== 霧氣背景 Canvas ==== */
+        canvas#fogCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+        }
+
+        /* ==== 顫動霓虹文字 ==== */
+        @keyframes neonFlicker {
+            0% { opacity: 0.8; text-shadow: 0 0 4px var(--st-red), 0 0 12px var(--st-red); }
+            5% { opacity: 0.4; }
+            10% { opacity: 1; }
+            12% { opacity: 0.5; }
+            20% { opacity: 1; }
+            100% { opacity: 1; text-shadow: 0 0 6px var(--st-red), 0 0 18px var(--st-red); }
+        }
+
+        .neon {
+            animation: neonFlicker 3s infinite alternate;
         }
 
         /* 頂部狀態列 */
@@ -56,6 +79,7 @@
             font-weight: 900;
             font-size: 1.1rem;
             text-shadow: 0 0 6px rgba(255, 0, 0, 0.6);
+            animation: neonFlicker 4s infinite;
         }
 
         .update-pill {
@@ -77,7 +101,7 @@
             border: 2px solid var(--st-border);
             position: relative;
             text-align: center;
-            box-shadow: 0 0 20px rgba(229, 9, 20, 0.15);
+            box-shadow: 0 0 25px rgba(229, 9, 20, 0.3);
         }
 
         .hero-period {
@@ -91,7 +115,8 @@
             border-radius: 8px;
             border: 2px solid #000;
             font-weight: bold;
-            box-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+            animation: neonFlicker 4s infinite;
         }
 
         .hero-temp-container {
@@ -103,15 +128,16 @@
         }
 
         .hero-icon {
-            font-size: 4.5rem;
-            filter: drop-shadow(0 0 8px rgba(255, 0, 0, 0.35));
+            width: 70px;
+            height: 70px;
+            filter: drop-shadow(0 0 8px rgba(255, 0, 0, 0.4));
         }
 
         .hero-temp {
             font-size: 4rem;
             font-weight: 900;
             color: var(--st-light-red);
-            text-shadow: 0 0 8px rgba(255, 0, 0, 0.4);
+            text-shadow: 0 0 12px rgba(255, 0, 0, 0.6);
         }
 
         .hero-desc {
@@ -138,9 +164,8 @@
         }
 
         .advice-icon {
-            font-size: 2rem;
-            color: var(--st-light-red);
-            text-shadow: 0 0 6px rgba(255, 0, 0, 0.5);
+            width: 35px;
+            height: 35px;
         }
 
         .advice-text {
@@ -155,7 +180,8 @@
             font-size: 1.2rem;
             margin: 20px 10px 15px;
             color: var(--st-light-red);
-            text-shadow: 0 0 8px rgba(255, 0, 0, 0.4);
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            animation: neonFlicker 5s infinite;
         }
 
         .scroll-container {
@@ -163,9 +189,7 @@
             overflow-x: auto;
             gap: 15px;
             padding-bottom: 10px;
-            /* 隱藏滾動條但保留功能 */
             scrollbar-width: none;
-            -ms-overflow-style: none;
         }
 
         .scroll-container::-webkit-scrollbar {
@@ -174,34 +198,17 @@
 
         .mini-card {
             min-width: 140px;
-            background: rgba(20, 20, 20, 0.85);
+            background: rgba(20, 20, 20, 0.8);
             border-radius: 12px;
             padding: 20px 15px;
             text-align: center;
-            border: 3px solid white;
-            flex-shrink: 0;
-            /* 防止被擠壓 */
-        }
-
-        .mini-time {
-            background: var(--st-red);
-            color: white;
-            padding: 4px 10px;
-            font-size: 0.8rem;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            font-weight: bold;
-            text-shadow: 0 0 6px rgba(255, 0, 0, 0.5);
+            border: 2px solid var(--st-border);
         }
 
         .mini-icon {
-            font-size: 2.3rem;
+            width: 40px;
+            height: 40px;
             margin: 5px 0;
-        }
-
-        .mini-temp {
-            color: #fff;
-            font-weight: 700;
         }
 
         /* Loading 畫面 */
@@ -227,13 +234,16 @@
 
 <body>
 
+    <!-- ★ 霧氣背景 Canvas -->
+    <canvas id="fogCanvas"></canvas>
+
     <div id="loading" class="loading-screen">
-        <div style="font-size: 4rem; animation: pulse 2s infinite;">🌑</div>
+        <div style="font-size: 4rem; animation: neonFlicker 3s infinite;">🌑</div>
         <p>正在凝視異世界裂縫...</p>
     </div>
 
     <div class="status-bar">
-        <div class="location-pill">📍 新北</div>
+        <div class="location-pill neon">📍 Strange Weather</div>
         <div id="updateTime" class="update-pill">更新中...</div>
     </div>
 
@@ -247,32 +257,44 @@
     <script>
         const API_URL = "https://weather-ling.zeabur.app/api/weather/kaohsiung";
 
-        function getWeatherIcon(weather) {
-            if (!weather) return "🌫️";
-            if (weather.includes("晴")) return "🌕";
-            if (weather.includes("多雲")) return "🌫️";
-            if (weather.includes("陰")) return "🌑";
-            if (weather.includes("雨")) return "🩸";
-            if (weather.includes("雷")) return "⚡";
-            return "🌫️";
+        /* === Stranger Things SVG ICONS === */
+        const SVG_ICONS = {
+            clear: `<svg viewBox="0 0 64 64" fill="none" stroke="#E50914" stroke-width="3"><circle cx="32" cy="32" r="14"/><circle cx="32" cy="32" r="20" opacity="0.3"/></svg>`,
+            cloudy: `<svg viewBox="0 0 64 64" stroke="#E50914" stroke-width="3" fill="none"><ellipse cx="28" cy="36" rx="18" ry="12"/><ellipse cx="42" cy="32" rx="14" ry="10" opacity="0.5"/></svg>`,
+            fog: `<svg viewBox="0 0 64 64" stroke="#E50914" stroke-width="3" fill="none"><line x1="10" y1="28" x2="54" y2="28"/><line x1="8" y1="38" x2="50" y2="38"/><line x1="12" y1="48" x2="56" y2="48"/></svg>`,
+            rain: `<svg viewBox="0 0 64 64" stroke="#E50914" stroke-width="3" fill="none"><ellipse cx="34" cy="26" rx="18" ry="12"/><line x1="20" y1="40" x2="16" y2="50"/><line x1="32" y1="40" x2="28" y2="52"/><line x1="44" y1="40" x2="40" y2="53"/></svg>`,
+            thunder: `<svg viewBox="0 0 64 64" stroke="#E50914" stroke-width="3" fill="none"><polygon points="28,10 20,34 32,34 26,54 44,26 34,26"/></svg>`
+        };
+
+        function svgIcon(weather) {
+            if (!weather) return SVG_ICONS.fog;
+            if (weather.includes("雷")) return SVG_ICONS.thunder;
+            if (weather.includes("雨")) return SVG_ICONS.rain;
+            if (weather.includes("陰")) return SVG_ICONS.fog;
+            if (weather.includes("多雲")) return SVG_ICONS.cloudy;
+            if (weather.includes("晴")) return SVG_ICONS.clear;
+            return SVG_ICONS.fog;
         }
 
         /* === 怪奇物語風建議文案 === */
         function getAdvice(rainProb, maxTemp) {
-            let rainIcon = "🩸";
+            let rainIcon = SVG_ICONS.fog;
             let rainText = "空氣靜止…似乎不會降下未知之雨";
+
             if (parseInt(rainProb) > 30) {
-                rainIcon = "⚠️";
+                rainIcon = SVG_ICONS.rain;
                 rainText = "天空有異動…帶上傘，也許能活著回來";
             }
 
-            let clothIcon = "👤";
+            let clothIcon = SVG_ICONS.cloudy;
             let clothText = "氣息平穩，普通穿著即可";
+
             if (parseInt(maxTemp) >= 28) {
-                clothIcon = "🔥";
+                clothIcon = SVG_ICONS.thunder;
                 clothText = "熱浪逼近，如來自異界的灼熱";
-            } else if (parseInt(maxTemp) <= 20) {
-                clothIcon = "🧥";
+            }
+            else if (parseInt(maxTemp) <= 20) {
+                clothIcon = SVG_ICONS.fog;
                 clothText = "寒意蔓延，穿上外套避免被黑暗侵蝕";
             }
 
@@ -293,18 +315,20 @@
             const current = forecasts[0];
             const others = forecasts.slice(1);
 
-            // 1. 渲染 Hero Card (主畫面)
             const advice = getAdvice(current.rain, current.maxTemp);
             const period = getTimePeriod(current.startTime);
             const avgTemp = Math.round((parseInt(current.maxTemp) + parseInt(current.minTemp)) / 2);
 
+            /* === Hero Card === */
             document.getElementById('heroCard').innerHTML = `
                 <div class="hero-card">
-                    <div class="hero-period">${period}</div>
+                    <div class="hero-period neon">${period}</div>
+
                     <div class="hero-temp-container">
-                        <div class="hero-icon">${getWeatherIcon(current.weather)}</div>
+                        <div class="hero-icon">${svgIcon(current.weather)}</div>
                         <div class="hero-temp">${avgTemp}°</div>
                     </div>
+
                     <div class="hero-desc">${current.weather}</div>
 
                     <div class="advice-grid">
@@ -313,6 +337,7 @@
                             <div class="advice-text">${advice.rainText}</div>
                             <div style="font-size:0.7rem; color:#999">異象強度 ${current.rain}</div>
                         </div>
+
                         <div class="advice-item">
                             <div class="advice-icon">${advice.clothIcon}</div>
                             <div class="advice-text">${advice.clothText}</div>
@@ -322,72 +347,97 @@
                 </div>
             `;
 
-            // 2. 渲染稍後預報 (包含明天判斷)
+            /* === 未來預報 === */
             const scrollContainer = document.getElementById('futureForecasts');
-            scrollContainer.innerHTML = '';
+            scrollContainer.innerHTML = "";
 
-            // 抓今天的日期數字 (例如 24)
             const todayDate = new Date().getDate();
 
             others.forEach(f => {
                 let p = getTimePeriod(f.startTime);
 
-                // 判斷該預報的日期是否跟今天不同，不同就是明天
                 const fDate = new Date(f.startTime);
-                if (fDate.getDate() !== todayDate) {
-                    p = "明日 · " + p;
-                }
+                if (fDate.getDate() !== todayDate) p = "明日 · " + p;
 
                 scrollContainer.innerHTML += `
                     <div class="mini-card">
                         <div class="mini-time">${p}</div>
-                        <div class="mini-icon">${getWeatherIcon(f.weather)}</div>
+                        <div class="mini-icon">${svgIcon(f.weather)}</div>
                         <div class="mini-temp">${f.minTemp}° - ${f.maxTemp}°</div>
                         <div style="font-size:0.8rem; color:#888; margin-top:5px;">異象 ${f.rain}</div>
                     </div>
                 `;
             });
 
-            // 3. 右上角顯示今日日期
+            /* === 右上角日期 === */
             const now = new Date();
-            const month = now.getMonth() + 1;
-            const date = now.getDate();
-            const dayIndex = now.getDay();
             const days = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
-
-            document.getElementById('updateTime').textContent = `${month}月${date}日 ${days[dayIndex]}`;
+            document.getElementById('updateTime').textContent =
+                `${now.getMonth() + 1}月${now.getDate()}日 ${days[now.getDay()]}`;
         }
 
         async function fetchWeather() {
             try {
-                // 1. 定義「最低等待時間」：1500 毫秒 (1.5秒)
                 const delayPromise = new Promise(resolve => setTimeout(resolve, 1500));
-
-                // 2. 定義「抓取資料」的工作
                 const fetchPromise = fetch(API_URL).then(res => res.json());
-
-                // 3. Promise.all 會等待「兩個都完成」才會往下走
-                // result 陣列裡，第一個是 delay 的結果(沒用到)，第二個是 api 的 json 資料
                 const [_, json] = await Promise.all([delayPromise, fetchPromise]);
 
                 if (json.success) {
                     renderWeather(json.data);
 
-                    // 資料處理好後，隱藏 Loading，顯示主畫面
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('mainContent').style.display = 'block';
                 } else {
                     throw new Error("API Error");
                 }
             } catch (e) {
-                console.error(e);
                 alert("異界訊號失真，資料無法讀取。");
             }
         }
+
+        /* ==== 背景霧氣動畫 ==== */
+        const fogCanvas = document.getElementById("fogCanvas");
+        const ctx = fogCanvas.getContext("2d");
+
+        function resizeFog() {
+            fogCanvas.width = window.innerWidth;
+            fogCanvas.height = window.innerHeight;
+        }
+        resizeFog();
+        window.addEventListener("resize", resizeFog);
+
+        let fogParticles = [];
+        for (let i = 0; i < 40; i++) {
+            fogParticles.push({
+                x: Math.random() * fogCanvas.width,
+                y: Math.random() * fogCanvas.height,
+                r: 80 + Math.random() * 120,
+                v: 0.2 + Math.random() * 0.3
+            });
+        }
+
+        function drawFog() {
+            ctx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+            ctx.fillStyle = "rgba(255,0,0,0.05)";
+
+            fogParticles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                p.x += p.v * 0.4;
+                p.y += p.v * 0.15;
+
+                if (p.x - p.r > fogCanvas.width) p.x = -p.r;
+                if (p.y - p.r > fogCanvas.height) p.y = -p.r;
+            });
+
+            requestAnimationFrame(drawFog);
+        }
+        drawFog();
 
         document.addEventListener("DOMContentLoaded", fetchWeather);
     </script>
 
 </body>
-
 </html>
