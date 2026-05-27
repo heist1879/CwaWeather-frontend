@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0D1B2A">
+  <title>Linear Finch · NYC · Boston · Banff</title>
+  <link rel="manifest" href="./manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===== DESIGN SYSTEM ===== */
+    :root {
+      --bg:           #0D1B2A;
+      --surface:      #152435;
+      --card:         #1B2F44;
+      --card-border:  rgba(255,255,255,0.07);
+      --accent:       #F5A623;
+      --accent-soft:  rgba(245,166,35,0.12);
+      --accent-mid:   rgba(245,166,35,0.25);
+      --visited:      #3ECF7A;
+      --warning:      #F87171;
+      --free-gold:    #FBBF24;
+      --text:         #EDF2F7;
+      --text-2:       #90ADC4;
+      --text-3:       #5A7A96;
+      --shadow:       0 6px 24px rgba(0,0,0,0.5);
+      --shadow-sm:    0 2px 8px rgba(0,0,0,0.3);
+      --radius:       14px;
+      --radius-sm:    8px;
+    }
+
+    /* ===== RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+    /* ===== LAYOUT ===== */
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ===== HEADER ===== */
+    #trip-header {
+      background: rgba(13,27,42,0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 16px 0;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-inner { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+    .trip-title { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1rem; color: var(--accent); letter-spacing: 0.02em; }
+    .trip-dates { font-size: 0.78rem; color: var(--text-3); }
+    .progress-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent) 0%, #FBBF24 100%); border-radius: 2px; transition: width 0.4s ease; }
+
+    /* ===== DAY CHIPS STRIP ===== */
+    #day-chips-wrapper {
+      background: rgba(13,27,42,0.9);
+      border-bottom: 1px solid var(--card-border);
+      position: sticky; top: 62px; z-index: 99;
+    }
+    #day-chips {
+      display: flex; align-items: center; gap: 6px;
+      overflow-x: auto; padding: 10px 16px;
+      scrollbar-width: none;
+    }
+    #day-chips::-webkit-scrollbar { display: none; }
+    .leg-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .leg-separator { width: 1px; height: 24px; background: var(--card-border); flex-shrink: 0; margin: 0 2px; }
+    .leg-label {
+      font-family: 'Nunito', sans-serif; font-size: 0.65rem; font-weight: 800;
+      padding: 3px 7px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      flex-shrink: 0; white-space: nowrap;
+    }
+    .day-chip {
+      flex-shrink: 0;
+      font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.75rem;
+      padding: 5px 10px; border-radius: 20px;
+      border: 1.5px solid transparent;
+      background: rgba(255,255,255,0.04);
+      color: var(--text-2);
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+    .day-chip:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+    .day-chip.active { color: #0D1B2A; font-weight: 800; }
+    .day-chip.today-chip { position: relative; }
+    .day-chip.today-chip::after {
+      content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+      width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+    }
+    .day-chip.travel-chip { opacity: 0.5; font-style: italic; }
+
+    /* ===== MAIN CONTENT ===== */
+    #day-content { flex: 1; padding: 0 0 80px; }
+
+    /* ===== TRAVEL DAY ===== */
+    .travel-day {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 80px 20px; gap: 16px; text-align: center;
+    }
+    .travel-icon { font-size: 3.5rem; }
+    .travel-note { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.3rem; color: var(--text-2); }
+
+    /* ===== DAY HEADER ===== */
+    .day-header { padding: 20px 16px 0; }
+    .day-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .day-name { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1.25rem; color: var(--text); }
+    .day-neighbourhood { font-size: 0.85rem; color: var(--text-2); }
+    .leg-badge {
+      font-size: 0.68rem; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+      border: 1px solid transparent;
+      font-family: 'Nunito', sans-serif; letter-spacing: 0.03em;
+    }
+
+    /* ===== FREE ALERT BANNER ===== */
+    .free-alert {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3);
+      border-radius: var(--radius-sm); padding: 12px; margin-bottom: 14px;
+      font-size: 0.82rem; color: var(--free-gold); line-height: 1.5;
+    }
+    .free-alert-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+
+    /* ===== VIEW TOGGLE ===== */
+    .view-toggle {
+      display: flex; background: rgba(255,255,255,0.06); border-radius: 40px;
+      padding: 3px; width: fit-content; margin-bottom: 18px;
+      border: 1px solid var(--card-border);
+    }
+    .toggle-btn {
+      font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.82rem;
+      padding: 7px 18px; border-radius: 40px;
+      color: var(--text-2); transition: all 0.18s ease;
+    }
+    .toggle-btn.active { background: var(--accent); color: #0D1B2A; }
+    .toggle-btn:hover:not(.active) { color: var(--text); }
+
+    /* ===== SCHEDULE TIMELINE ===== */
+    .schedule-timeline { padding: 0 16px; }
+    .timeline-item {
+      display: flex; gap: 14px; position: relative;
+      transition: opacity 0.2s;
+    }
+    .timeline-item.visited-item { opacity: 0.55; }
+    .timeline-left { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; padding-top: 16px; }
+    .timeline-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--accent); border: 2px solid var(--bg);
+      box-shadow: 0 0 0 3px var(--accent-mid); flex-shrink: 0; z-index: 1;
+    }
+    .timeline-item.visited-item .timeline-dot { background: var(--visited); box-shadow: 0 0 0 3px rgba(62,207,122,0.2); }
+    .timeline-line { flex: 1; width: 2px; background: linear-gradient(to bottom, var(--accent-mid) 0%, transparent 100%); margin-top: 4px; min-height: 30px; }
+
+    /* ===== PLACE CARD ===== */
+    .place-card {
+      flex: 1; background: var(--card); border: 1px solid var(--card-border);
+      border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+      box-shadow: var(--shadow-sm); min-width: 0;
+    }
+    .timeline-item.visited-item .place-card { border-left: 3px solid var(--visited); }
+    .place-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .place-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+    .place-name { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1rem; color: var(--text); }
+    .category-pill {
+      font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; flex-shrink: 0;
+    }
+    .visited-btn {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--text-3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; flex-shrink: 0; transition: all 0.15s ease;
+      background: transparent; color: transparent;
+    }
+    .visited-btn:hover { border-color: var(--visited); }
+    .visited-btn.done { background: var(--visited); border-color: var(--visited); color: #0D1B2A; }
+
+    .place-detail { font-size: 0.82rem; color: var(--text-2); margin-top: 5px; display: flex; align-items: flex-start; gap: 6px; }
+    .place-detail .icon { flex-shrink: 0; font-size: 0.9rem; margin-top: 0.5px; }
+    .detail-closed { color: var(--warning); }
+    .detail-free { color: var(--visited); }
+
+    .free-window-banner {
+      margin-top: 10px; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.35);
+      border-radius: var(--radius-sm); padding: 9px 11px;
+      font-size: 0.82rem; color: var(--free-gold); line-height: 1.5;
+    }
+    .free-window-banner strong { display: block; margin-bottom: 2px; }
+    .free-note { color: var(--free-gold); opacity: 0.8; }
+
+    .chips-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      font-size: 0.7rem; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+      border: 1px solid transparent;
+    }
+    .chip-amber { background: rgba(245,166,35,0.1); border-color: rgba(245,166,35,0.35); color: var(--accent); }
+    .chip-warn  { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.35); color: var(--warning); }
+    .chip-green { background: rgba(62,207,122,0.1); border-color: rgba(62,207,122,0.35); color: var(--visited); }
+
+    .place-notes { font-size: 0.8rem; color: var(--text-3); margin-top: 8px; line-height: 1.5; }
+    .place-actions { margin-top: 10px; }
+    .maps-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.78rem; font-weight: 600; color: var(--accent);
+      background: var(--accent-soft); border: 1px solid var(--accent-mid);
+      padding: 5px 11px; border-radius: 20px; transition: all 0.15s;
+    }
+    .maps-link:hover { background: var(--accent-mid); }
+
+    /* ===== EMPTY DAY ===== */
+    .empty-day {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 60px 20px; text-align: center;
+    }
+    .empty-icon { font-size: 3rem; }
+    .empty-text { color: var(--text-2); font-size: 0.95rem; max-width: 280px; line-height: 1.5; }
+
+    /* ===== RESTAURANTS ===== */
+    .restaurants-section { padding: 4px 16px 0; margin-top: 8px; }
+    .section-divider {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
+    }
+    .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--card-border); }
+    .restaurant-grid { display: flex; flex-direction: column; gap: 8px; }
+    .restaurant-card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: var(--radius); padding: 12px 14px;
+    }
+    .restaurant-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .restaurant-name { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.95rem; }
+    .restaurant-meta { display: flex; align-items: center; gap: 8px; }
+    .price-dots { color: var(--accent); font-size: 0.75rem; letter-spacing: 2px; }
+    .price-dots .empty { opacity: 0.25; }
+    .signature-dish {
+      font-size: 0.7rem; font-weight: 600; color: var(--accent);
+      background: var(--accent-soft); padding: 2px 8px; border-radius: 20px;
+    }
+    .restaurant-notes { font-size: 0.78rem; color: var(--text-3); line-height: 1.5; }
+    .maps-link-small {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.73rem; color: var(--text-3); margin-top: 6px;
+    }
+    .maps-link-small:hover { color: var(--accent); }
+
+    /* ===== MAP VIEW ===== */
+    .map-wrapper { display: flex; flex-direction: column; height: calc(100vh - 130px); }
+    #leaflet-map { flex: 1; min-height: 0; }
+    .map-bottom { padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--card-border); }
+    .map-stop-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .map-stop { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; }
+    .stop-num {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--accent);
+      color: #0D1B2A; font-weight: 800; font-size: 0.7rem;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .stop-name { color: var(--text-2); }
+    .route-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.85rem;
+      background: var(--accent); color: #0D1B2A;
+      padding: 9px 18px; border-radius: 40px;
+      text-decoration: none; width: 100%; justify-content: center;
+      transition: opacity 0.15s;
+    }
+    .route-btn:hover { opacity: 0.9; }
+    .map-offline {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; color: var(--text-2); font-size: 0.9rem;
+      text-align: center; padding: 20px;
+    }
+    .map-loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; gap: 10px; color: var(--text-3); font-size: 0.9rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 20px; height: 20px; border: 2px solid var(--card-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+    /* Leaflet custom marker */
+    .map-marker {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--accent); color: #0D1B2A;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 13px;
+      border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    /* ===== PREV/NEXT NAV ===== */
+    .day-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
+      background: rgba(13,27,42,0.95); backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid var(--card-border);
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px;
+    }
+    .nav-btn {
+      flex: 1; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.85rem;
+      background: var(--card); border: 1px solid var(--card-border);
+      color: var(--text-2); padding: 10px; border-radius: var(--radius-sm);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) { background: var(--card-hover, #243F5C); color: var(--text); }
+    .nav-btn:disabled { opacity: 0.3; cursor: default; }
+    .nav-today-btn {
+      font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.75rem;
+      background: var(--accent-soft); border: 1px solid var(--accent-mid);
+      color: var(--accent); padding: 10px 14px; border-radius: var(--radius-sm);
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .nav-today-btn:hover { background: var(--accent-mid); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (min-width: 640px) {
+      .schedule-timeline { max-width: 600px; margin: 0 auto; }
+      .restaurants-section { max-width: 600px; margin: 0 auto; }
+      .day-nav { max-width: 600px; margin: 0 auto; left: 50%; transform: translateX(-50%); border-radius: var(--radius) var(--radius) 0 0; }
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <header id="trip-header"></header>
+  <div id="day-chips-wrapper"><div id="day-chips"></div></div>
+  <main id="day-content"></main>
+  <nav class="day-nav" id="day-nav"></nav>
+</div>
+
+<script src="./trip-data.js"></script>
+<script>
+/* ========================================================
+   STATE
+   ======================================================== */
+const state = {
+  currentDate: null,
+  view: 'schedule',
+  visited: {}
+};
+
+let leafletReady = false;
+let mapInst = null;
+
+/* ========================================================
+   HELPERS
+   ======================================================== */
+function getAllDays() {
+  const days = [];
+  for (const leg of TRIP.legs) {
+    for (const day of leg.days) {
+      days.push(Object.assign({}, day, { leg }));
+    }
+  }
+  return days.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getDayData(date) {
+  for (const leg of TRIP.legs) {
+    for (const day of leg.days) {
+      if (day.date === date) return Object.assign({}, day, { leg });
+    }
+  }
+  return null;
+}
+
+function getWeekdayKey(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return ['sun','mon','tue','wed','thu','fri','sat'][d.getDay()];
+}
+
+function fmtDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function fmtChipDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function getHoursToday(place, weekday) {
+  if (!place.hours) return null;
+  if (place.hours.daily) return place.hours.daily;
+  if (Object.prototype.hasOwnProperty.call(place.hours, weekday)) {
+    return place.hours[weekday]; // may be null (closed) or a string
+  }
+  return null;
+}
+
+function getAdmissionText(place) {
+  if (!place.fee) return null;
+  return place.fee.note || 'Free';
+}
+
+function getFreeWindowToday(place, weekday) {
+  if (!place.freeWindow) return null;
+  return place.freeWindow.day === weekday ? place.freeWindow : null;
+}
+
+function buildRouteUrl(places) {
+  const pts = places.filter(p => p.lat && p.lng);
+  if (!pts.length) return null;
+  if (pts.length === 1) return `https://maps.google.com/?q=${pts[0].lat},${pts[0].lng}`;
+  return 'https://www.google.com/maps/dir/' + pts.map(p => `${p.lat},${p.lng}`).join('/');
+}
+
+function saveState() {
+  localStorage.setItem('lf-visited', JSON.stringify(state.visited));
+  localStorage.setItem('lf-view', state.view);
+}
+
+function getTodayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+/* ========================================================
+   INIT
+   ======================================================== */
+function init() {
+  const saved = localStorage.getItem('lf-visited');
+  if (saved) try { state.visited = JSON.parse(saved); } catch(e) {}
+  const savedView = localStorage.getItem('lf-view');
+  if (savedView === 'map' || savedView === 'schedule') state.view = savedView;
+
+  const today = getTodayStr();
+  const allDays = getAllDays();
+  const tripDates = allDays.map(d => d.date);
+  state.currentDate = tripDates.includes(today) ? today : tripDates[0];
+
+  renderAll();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+
+/* ========================================================
+   RENDER
+   ======================================================== */
+function renderAll() {
+  renderHeader();
+  renderDayChips();
+  renderDayContent();
+  renderNav();
+}
+
+function renderHeader() {
+  const allDays = getAllDays();
+  const tripDays = allDays.filter(d => !d.isTravel);
+  const idx = tripDays.findIndex(d => d.date === state.currentDate);
+  const pct = tripDays.length ? Math.max(0, Math.min(100, ((idx + 1) / tripDays.length) * 100)) : 0;
+
+  document.getElementById('trip-header').innerHTML = `
+    <div class="header-inner">
+      <span class="trip-title">${TRIP.title}</span>
+      <span class="trip-dates">${TRIP.dates.start.slice(5).replace('-','/')} – ${TRIP.dates.end.slice(5).replace('-','/')}</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct.toFixed(1)}%"></div></div>
+  `;
+}
+
+function renderDayChips() {
+  const allDays = getAllDays();
+  const today = getTodayStr();
+  let html = '';
+  let lastLegId = null;
+
+  for (const day of allDays) {
+    if (day.leg.id !== lastLegId) {
+      if (lastLegId !== null) html += '</div><div class="leg-separator"></div>';
+      html += `<div class="leg-group">
+        <span class="leg-label" style="background:${day.leg.color}20;color:${day.leg.color}">${day.leg.name}</span>`;
+      lastLegId = day.leg.id;
+    }
+    const isActive = day.date === state.currentDate;
+    const isToday = day.date === today;
+    const label = fmtChipDate(day.date);
+    const activeStyle = isActive ? `background:${day.leg.color};border-color:${day.leg.color};color:#0D1B2A` : `border-color:${day.leg.color}40`;
+
+    html += `<button
+      class="day-chip${isActive?' active':''}${isToday?' today-chip':''}${day.isTravel?' travel-chip':''}"
+      style="${activeStyle}"
+      onclick="selectDay('${day.date}')"
+      aria-label="${day.date}"
+    >${label}</button>`;
+  }
+  if (lastLegId !== null) html += '</div>';
+
+  const chips = document.getElementById('day-chips');
+  chips.innerHTML = html;
+
+  requestAnimationFrame(() => {
+    const active = chips.querySelector('.day-chip.active');
+    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  });
+}
+
+function renderNav() {
+  const allDays = getAllDays();
+  const dates = allDays.map(d => d.date);
+  const idx = dates.indexOf(state.currentDate);
+  const hasPrev = idx > 0;
+  const hasNext = idx < dates.length - 1;
+  const today = getTodayStr();
+  const isToday = state.currentDate === today;
+  const inTrip = dates.includes(today);
+
+  document.getElementById('day-nav').innerHTML = `
+    <button class="nav-btn" onclick="selectDay('${dates[idx-1]}')" ${hasPrev?'':'disabled'}>← Prev</button>
+    ${inTrip && !isToday ? `<button class="nav-today-btn" onclick="goToToday()">Today</button>` : ''}
+    <button class="nav-btn" onclick="selectDay('${dates[idx+1]}')" ${hasNext?'':'disabled'}>Next →</button>
+  `;
+}
+
+function goToToday() {
+  const today = getTodayStr();
+  const allDays = getAllDays();
+  if (allDays.some(d => d.date === today)) selectDay(today);
+}
+
+function selectDay(date) {
+  if (!date) return;
+  state.currentDate = date;
+  if (mapInst) { mapInst.remove(); mapInst = null; }
+  renderDayChips();
+  renderDayContent();
+  renderNav();
+  renderHeader();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setView(v) {
+  state.view = v;
+  saveState();
+  if (mapInst) { mapInst.remove(); mapInst = null; }
+  document.querySelectorAll('.toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === v);
+  });
+  const day = getDayData(state.currentDate);
+  const weekday = getWeekdayKey(state.currentDate);
+  const container = document.getElementById('view-content');
+  if (!container || !day) return;
+  if (v === 'schedule') renderScheduleView(day, weekday, container);
+  else renderMapView(day, container);
+}
+
+/* ========================================================
+   DAY CONTENT
+   ======================================================== */
+function renderDayContent() {
+  const day = getDayData(state.currentDate);
+  const container = document.getElementById('day-content');
+
+  if (!day) {
+    container.innerHTML = '<div class="empty-day"><div class="empty-icon">🗓</div><div class="empty-text">No data for this day.</div></div>';
+    return;
+  }
+
+  if (day.isTravel) {
+    container.innerHTML = `<div class="travel-day"><div class="travel-icon">✈️</div><div class="travel-note">${day.travelNote}</div></div>`;
+    return;
+  }
+
+  const weekday = getWeekdayKey(state.currentDate);
+
+  let freeAlerts = [];
+  for (const p of (day.places || [])) {
+    const fw = getFreeWindowToday(p, weekday);
+    if (fw) freeAlerts.push(`<strong>${p.name}</strong> free ${fw.start}–${fw.end}${fw.note ? ` (${fw.note})` : ''}`);
+  }
+  const alertBanner = freeAlerts.length
+    ? `<div class="free-alert"><span class="free-alert-icon">🎉</span><div>Free entry today:<br>${freeAlerts.join('<br>')}</div></div>`
+    : '';
+
+  const legColor = day.leg.color;
+  container.innerHTML = `
+    <div class="day-header">
+      <div class="day-meta">
+        <span class="day-name">${fmtDate(state.currentDate)}</span>
+        <span class="day-neighbourhood">${day.neighbourhood}</span>
+        <span class="leg-badge" style="background:${legColor}20;color:${legColor};border-color:${legColor}40">${day.leg.name}</span>
+      </div>
+      ${alertBanner}
+      <div class="view-toggle">
+        <button class="toggle-btn${state.view==='schedule'?' active':''}" data-view="schedule" onclick="setView('schedule')">Schedule</button>
+        <button class="toggle-btn${state.view==='map'?' active':''}" data-view="map" onclick="setView('map')">Map</button>
+      </div>
+    </div>
+    <div id="view-content"></div>
+  `;
+
+  const vc = document.getElementById('view-content');
+  if (state.view === 'schedule') renderScheduleView(day, weekday, vc);
+  else renderMapView(day, vc);
+}
+
+/* ========================================================
+   SCHEDULE VIEW
+   ======================================================== */
+function renderScheduleView(day, weekday, container) {
+  const places = day.places || [];
+  const restaurants = day.restaurants || [];
+
+  if (!places.length && !restaurants.length) {
+    const icon = day.notes && day.notes.includes('🌿') ? '🌿' : day.notes && day.notes.includes('🧳') ? '🧳' : '🗓';
+    container.innerHTML = `<div class="empty-day"><div class="empty-icon">${icon}</div><div class="empty-text">${day.notes || 'No activities planned.'}</div></div>`;
+    return;
+  }
+
+  let html = '<div class="schedule-timeline">';
+  places.forEach((place, i) => {
+    html += makePlaceCard(place, day, weekday, i === places.length - 1);
+  });
+  html += '</div>';
+
+  if (restaurants.length) {
+    html += `<div class="restaurants-section">
+      <div class="section-divider">🍽 Food & Restaurants</div>
+      <div class="restaurant-grid">${restaurants.map(makeRestaurantCard).join('')}</div>
+    </div>`;
+  }
+
+  if (day.notes && places.length) {
+    html += `<div style="padding:12px 16px;font-size:0.8rem;color:var(--text-3);line-height:1.5">${day.notes}</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function makePlaceCard(place, day, weekday, isLast) {
+  const hoursRaw = getHoursToday(place, weekday);
+  const hoursText = hoursRaw === null && place.hours && Object.keys(place.hours).length
+    ? 'Closed today ⚠️' : hoursRaw;
+  const hoursClass = hoursRaw === null && hoursText ? 'detail-closed' : '';
+
+  const feeText = getAdmissionText(place);
+  const isFree = feeText && (feeText.toLowerCase().includes('free') || feeText.toLowerCase().includes('$0'));
+
+  const fw = getFreeWindowToday(place, weekday);
+  let fwHtml = '';
+  if (fw) {
+    const groupSize = day.leg.groupSize;
+    const savings = place.fee && place.fee.adult > 0 && groupSize > 0
+      ? ` — save $${place.fee.adult * groupSize} total` : '';
+    fwHtml = `<div class="free-window-banner">
+      <strong>✨ Free ${fw.start}–${fw.end} today${savings}</strong>
+      ${fw.note ? `<span class="free-note">${fw.note}</span>` : ''}
+    </div>`;
+  }
+
+  let chips = '';
+  if (place.discountNote) chips += `<span class="chip chip-amber">🪪 ${place.discountNote}</span>`;
+  if (place.bookingNote) chips += `<span class="chip chip-warn">${place.bookingNote}</span>`;
+
+  const isVisited = !!state.visited[place.id];
+  const mapsBtn = place.mapsUrl
+    ? `<a href="${place.mapsUrl}" target="_blank" rel="noopener" class="maps-link">🗺 Open in Maps</a>`
+    : '';
+
+  const catColors = { museum:'#8B5CF6', park:'#10B981', market:'#F59E0B', attraction:'#3B82F6',
+    store:'#EC4899', walk:'#6B7280', transport:'#64748B', concert:'#EF4444', food:'#F97316' };
+  const cc = catColors[place.category] || '#6B7280';
+
+  return `
+  <div class="timeline-item${isVisited?' visited-item':''}" id="item-${place.id}">
+    <div class="timeline-left">
+      <div class="timeline-dot"></div>
+      ${!isLast ? '<div class="timeline-line"></div>' : ''}
+    </div>
+    <div class="place-card">
+      <div class="place-card-top">
+        <div class="place-title-row">
+          <span class="place-name">${place.name}</span>
+          <span class="category-pill" style="background:${cc}20;color:${cc}">${place.category}</span>
+        </div>
+        <button class="visited-btn${isVisited?' done':''}" onclick="toggleVisited('${place.id}')" title="Mark visited">✓</button>
+      </div>
+      ${place.time ? `<div class="place-detail"><span class="icon">⏰</span>${place.time}</div>` : ''}
+      ${hoursText ? `<div class="place-detail ${hoursClass}"><span class="icon">🕐</span>${hoursText}</div>` : ''}
+      ${feeText ? `<div class="place-detail${isFree?' detail-free':''}"><span class="icon">💰</span>${feeText}</div>` : ''}
+      ${fwHtml}
+      ${chips ? `<div class="chips-row">${chips}</div>` : ''}
+      ${place.notes ? `<div class="place-notes">${place.notes}</div>` : ''}
+      <div class="place-actions">${mapsBtn}</div>
+    </div>
+  </div>`;
+}
+
+function makeRestaurantCard(r) {
+  const filled = '●'.repeat(r.priceRange);
+  const empty = '<span class="empty">●</span>'.repeat(4 - r.priceRange);
+  const mapsBtn = r.mapsUrl
+    ? `<a href="${r.mapsUrl}" target="_blank" rel="noopener" class="maps-link-small">🗺 Maps</a>` : '';
+  return `
+  <div class="restaurant-card">
+    <div class="restaurant-top">
+      <span class="restaurant-name">${r.name}</span>
+      ${r.signatureDish ? `<span class="signature-dish">${r.signatureDish}</span>` : ''}
+    </div>
+    <div class="restaurant-meta">
+      <span class="price-dots">${filled}${empty}</span>
+    </div>
+    ${r.notes ? `<div class="restaurant-notes">${r.notes}</div>` : ''}
+    ${mapsBtn}
+  </div>`;
+}
+
+/* ========================================================
+   MAP VIEW
+   ======================================================== */
+function renderMapView(day, container) {
+  const places = (day.places || []).filter(p => p.lat && p.lng);
+
+  if (!places.length) {
+    container.innerHTML = `<div class="empty-day"><div class="empty-icon">🗺</div><div class="empty-text">No map coordinates available for this day's places.</div></div>`;
+    return;
+  }
+
+  const routeUrl = buildRouteUrl(places);
+  const stopList = places.map((p, i) =>
+    `<div class="map-stop"><span class="stop-num">${i+1}</span><span class="stop-name">${p.name}</span></div>`
+  ).join('');
+
+  container.innerHTML = `
+    <div class="map-wrapper">
+      <div id="leaflet-map"><div class="map-loading"><div class="spinner"></div> Loading map…</div></div>
+      <div class="map-bottom">
+        <div class="map-stop-list">${stopList}</div>
+        ${routeUrl ? `<a href="${routeUrl}" target="_blank" rel="noopener" class="route-btn">📍 Open Full Route in Google Maps</a>` : ''}
+      </div>
+    </div>`;
+
+  loadLeaflet(places);
+}
+
+function loadLeaflet(places) {
+  if (leafletReady) { initMap(places); return; }
+
+  const css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+  document.head.appendChild(css);
+
+  const js = document.createElement('script');
+  js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  js.onload = () => { leafletReady = true; initMap(places); };
+  js.onerror = () => {
+    const el = document.getElementById('leaflet-map');
+    if (el) el.innerHTML = '<div class="map-offline">Map unavailable offline.<br>Use the Google Maps button below.</div>';
+  };
+  document.head.appendChild(js);
+}
+
+function initMap(places) {
+  const el = document.getElementById('leaflet-map');
+  if (!el || typeof L === 'undefined') return;
+
+  if (mapInst) { mapInst.remove(); mapInst = null; }
+
+  el.innerHTML = '';
+  mapInst = L.map(el, { attributionControl: false });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(mapInst);
+
+  L.control.attribution({ prefix: false }).addTo(mapInst);
+  mapInst.attributionControl.addAttribution('© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>');
+
+  const coords = places.map(p => [p.lat, p.lng]);
+
+  coords.forEach((c, i) => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="map-marker">${i+1}</div>`,
+      iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -18]
+    });
+    const popup = `<strong>${places[i].name}</strong>${places[i].notes ? `<br><small>${places[i].notes}</small>` : ''}`;
+    L.marker(c, { icon }).addTo(mapInst).bindPopup(popup);
+  });
+
+  if (coords.length > 1) {
+    L.polyline(coords, { color: '#F5A623', weight: 3, opacity: 0.75, dashArray: '8,6' }).addTo(mapInst);
+  }
+
+  mapInst.fitBounds(L.latLngBounds(coords).pad(0.15));
+}
+
+/* ========================================================
+   VISITED
+   ======================================================== */
+function toggleVisited(placeId) {
+  const wasVisited = !!state.visited[placeId];
+  if (wasVisited) delete state.visited[placeId]; else state.visited[placeId] = true;
+  saveState();
+
+  const item = document.getElementById('item-' + placeId);
+  const btn = item ? item.querySelector('.visited-btn') : null;
+  if (item) item.classList.toggle('visited-item', !wasVisited);
+  if (btn) btn.classList.toggle('done', !wasVisited);
+}
+
+/* ========================================================
+   KEYBOARD NAVIGATION
+   ======================================================== */
+document.addEventListener('keydown', e => {
+  const allDays = getAllDays();
+  const dates = allDays.map(d => d.date);
+  const idx = dates.indexOf(state.currentDate);
+  if (e.key === 'ArrowRight' && idx < dates.length - 1) selectDay(dates[idx + 1]);
+  if (e.key === 'ArrowLeft'  && idx > 0)                 selectDay(dates[idx - 1]);
+});
+
+/* ========================================================
+   GO
+   ======================================================== */
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
